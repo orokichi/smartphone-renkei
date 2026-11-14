@@ -3,6 +3,7 @@ import { getState, setState, toast, uid, Notif, DeviceInfo, Transfer } from './s
 import { native, nativeJson, b64ToBytes, bytesToB64, onNative } from './native';
 
 const PREFIX = 'smrk-v1-';
+const log = (...a: any[]) => console.log('[link]', ...a);
 const CHUNK = 64 * 1024;
 const PEER_CFG = {
   config: {
@@ -83,6 +84,7 @@ export function startHost() {
   peer.on('open', () => { if (getState().status !== 'connected') setState({ status: 'waiting' }); });
   peer.on('disconnected', () => { setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 2000); });
   peer.on('error', (e: any) => {
+    log('host peer error', e.type, e.message);
     if (e.type === 'unavailable-id') {
       setState({ status: 'error', error: 'このPCのIDは別のタブで使用中です。他のタブを閉じてください。' });
       clearTimeout(retryTimer);
@@ -95,8 +97,10 @@ export function startHost() {
   });
   peer.on('connection', (c) => {
     let authed = false;
+    log('incoming connection', c.peer);
     c.on('data', (d: any) => {
       if (!authed) {
+        log('hello?', d?.t, !!d?.token, !!d?.pin);
         if (d?.t !== 'hello') return;
         const trusted: string[] = JSON.parse(localStorage.getItem(LS_TRUST) || '[]');
         if ((d.token && trusted.includes(d.token)) || (d.pin && d.pin === getState().pin)) {
@@ -139,7 +143,9 @@ export function startClient(hostId?: string, pin?: string) {
     if (!peer || peer.destroyed) return;
     const c = peer.connect(PREFIX + target, { reliable: true });
     let welcomed = false;
+    log('connecting to', target, 'token?', !!(saved?.hostId === target && saved?.token), 'pin?', !!pin);
     c.on('open', () => {
+      log('dc open, sending hello');
       c.send({ t: 'hello', role: 'phone', name: deviceName(), token: saved?.hostId === target ? saved?.token : undefined, pin });
     });
     c.on('data', (d: any) => {
@@ -175,6 +181,7 @@ export function startClient(hostId?: string, pin?: string) {
   peer.on('open', connect);
   peer.on('disconnected', () => { setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 2000); });
   peer.on('error', (e: any) => {
+    log('client peer error', e.type, e.message);
     if (e.type === 'peer-unavailable') {
       setState({ status: 'connecting', error: 'PCが見つかりません。PCでスマートフォン連携を開いてください。' });
       clearTimeout(retryTimer);

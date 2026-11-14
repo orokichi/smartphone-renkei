@@ -354,10 +354,12 @@ object Phone {
     private var prevVolume = -1
     private val stopRing = Runnable { ring(false) }
 
-    fun ring(on: Boolean) = main.post {
+    fun ring(on: Boolean) { main.post { ringNow(on) } }
+
+    private fun ringNow(on: Boolean) {
         val am = ctx.getSystemService(AudioManager::class.java)
         if (on) {
-            if (player != null) return@post
+            if (player != null) return
             prevVolume = am.getStreamVolume(AudioManager.STREAM_ALARM)
             runCatching { am.setStreamVolume(AudioManager.STREAM_ALARM, am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0) }
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)

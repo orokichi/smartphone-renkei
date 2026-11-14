@@ -426,20 +426,25 @@ export function setupPhoneServices() {
       d.files?.forEach((f) => sendFile(sourceFromNative(f.fid, f.name, f.size, f.mime)));
     });
 
-    handleRpc('sms.threads', () => nativeJson(() => native!.smsThreads(), []));
-    handleRpc('sms.messages', (p) => nativeJson(() => native!.smsMessages(p.address), []));
+    const nj = (fn: () => string) => {
+      const v = JSON.parse(fn() || 'null');
+      if (v && !Array.isArray(v) && typeof v === 'object' && v.error) throw new Error(v.error);
+      return v;
+    };
+    handleRpc('sms.threads', () => nj(() => native!.smsThreads()));
+    handleRpc('sms.messages', (p) => nj(() => native!.smsMessages(p.address)));
     handleRpc('sms.send', (p) => {
       const r = nativeJson<{ ok: boolean; error?: string }>(() => native!.sendSms(p.address, p.text), { ok: false });
       if (!r.ok) throw new Error(r.error || '送信できませんでした');
       return r;
     });
-    handleRpc('calls.list', () => nativeJson(() => native!.callLog(), []));
+    handleRpc('calls.list', () => nj(() => native!.callLog()));
     handleRpc('calls.dial', (p) => {
       const r = nativeJson<{ ok: boolean; error?: string }>(() => native!.dial(p.number), { ok: false });
       if (!r.ok) throw new Error(r.error || '発信できませんでした');
       return r;
     });
-    handleRpc('photos.list', (p) => nativeJson(() => native!.photos(p.limit || 60), []));
+    handleRpc('photos.list', (p) => nj(() => native!.photos(p.limit || 60)));
     handleRpc('photos.thumb', (p) => native!.thumb(p.id));
     handleRpc('photos.send', (p) => {
       (p.ids as string[]).forEach((id) => {

@@ -110,10 +110,12 @@ export function startHost() {
           if (conn && conn !== c) { try { conn.close(); } catch { /* */ } }
           conn = c;
           c.send({ t: 'welcome', token, name: deviceName() });
+          log('welcomed', c.peer);
           setState({ status: 'connected', peerName: d.name, pin: randPin(), notifs: [] });
           toast(`${d.name || 'スマートフォン'} と接続しました`);
           bus.dispatchEvent(new Event('connected'));
         } else {
+          log('rejecting', trusted.length);
           c.send({ t: 'reject', reason: 'PINが一致しません' });
           setTimeout(() => c.close(), 500);
         }
@@ -122,6 +124,7 @@ export function startHost() {
       onMessage(d);
     });
     c.on('close', () => {
+      log('host conn closed', conn === c);
       if (conn === c) {
         conn = null;
         setState({ status: 'waiting', device: null });
@@ -149,6 +152,7 @@ export function startClient(hostId?: string, pin?: string) {
       c.send({ t: 'hello', role: 'phone', name: deviceName(), token: saved?.hostId === target ? saved?.token : undefined, pin });
     });
     c.on('data', (d: any) => {
+      if (!welcomed) log('pre-welcome msg', d?.t);
       if (!welcomed) {
         if (d?.t === 'welcome') {
           welcomed = true;
@@ -169,6 +173,7 @@ export function startClient(hostId?: string, pin?: string) {
       onMessage(d);
     });
     c.on('close', () => {
+      log('client conn closed', conn === c);
       if (conn === c) {
         conn = null;
         native?.keepAlive(true, '再接続しています…');

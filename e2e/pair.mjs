@@ -39,8 +39,13 @@ console.log('OK clip delivered');
 
 // reload phone -> auto reconnect with token
 await ph.reload();
-await pc.waitForSelector('text=と接続中', { timeout: 30000 });
-await ph.waitForSelector('text=と接続中', { timeout: 30000 });
+try {
+  await ph.waitForSelector('text=と接続中', { timeout: 30000 });
+} catch (e) {
+  console.log('PH BODY:', (await ph.textContent('body')).slice(0, 400));
+  console.log('PC BODY:', (await pc.textContent('body')).slice(0, 400));
+  throw e;
+}
 console.log('OK reconnect with saved token');
 await pc.screenshot({ path: 'e2e/pc-clip.png' });
 await b.close();
